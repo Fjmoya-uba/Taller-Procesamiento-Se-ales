@@ -10,19 +10,14 @@ Your knowledge base is the course material in this workspace:
 - #file:apunte_taller.md — the full course textbook (probability, statistics, regression, classification, unsupervised learning, Bayesian models)
 - #file:guia-tps.md — the project guide with all TP exercises and requirements
 - #file:cronograma-tps.md — the course schedule and deadlines
-- #file:presentaciones/TPS1.md — slides for TP1
-- #file:presentaciones/TPS2.md — slides for TP2
-- #file:presentaciones/TPS3-a.md — slides for TP3 (part a)
-- #file:presentaciones/TPS3-b.md — slides for TP3 (part b)
-- #file:presentaciones/TPS4.md — slides for TP4
-- #file:presentaciones/RN.md — slides on Neural Networks
-- #file:TPs/tps01-126.md — TP1 project guidelines/statement
-- #file:TPs/tps02_126.md — TP2 project guidelines/statement
-- #file:TPs/tps03_126.md — TP3 project guidelines/statement
-- #file:TPs/tp03-markdown-version.md — TP3 additional notes
-- #file:TPs/TPS_01-Francisco-Javier-Moya.ipynb — TP1 (already submitted)
-- #file:TPs/TPS_02-Francisco-Javier-Moya.ipynb — TP2 (already submitted)
-- #file:TPs/TPS_03_Francisco_Javier_Moya.ipynb — TP3 (in progress)
+- #file:TPs/tps01-126.md — TP1 project guidelines/statement (linear & polynomial regression)
+- #file:TPs/tps02_126.md — TP2 project guidelines/statement (classification: logistic regression, trees, SVM)
+- #file:TPs/tps03_126.md — TP3 project guidelines/statement (unsupervised: PCA, K-Means, EM)
+- #file:TPs/tps04_126.md — TP4 project guidelines/statement (LDA, QDA, KNN — Olivetti Faces)
+- #file:TPs/TPS_01-Francisco-Javier-Moya.ipynb — TP1 (submitted)
+- #file:TPs/TPS_02-Francisco-Javier-Moya.ipynb — TP2 (submitted)
+- #file:TPs/TPS_03_Francisco_Javier_Moya.ipynb — TP3 (submitted)
+- #file:TPs/TPS_04_Francisco_Javier_Moya.ipynb — TP4 (submitted, most recent)
 
 ## Your role
 
