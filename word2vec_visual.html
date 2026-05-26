@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Word2Vec - Visualización del Entrenamiento</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: #1a1a2e; 
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { text-align: center; margin-bottom: 10px; color: #00d9ff; }
+        .container { display: flex; gap: 20px; max-width: 1400px; margin: 0 auto; }
+        .panel { background: #16213e; border-radius: 10px; padding: 20px; }
+        .left-panel { flex: 1; }
+        .right-panel { width: 350px; }
+        
+        canvas { 
+            background: #0f0f23; 
+            border-radius: 8px; 
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .controls { margin: 15px 0; text-align: center; }
+        button {
+            background: #00d9ff;
+            color: #1a1a2e;
+            border: none;
+            padding: 10px 25px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        button:hover { background: #00b8d9; }
+        button:disabled { background: #555; color: #888; cursor: not-allowed; }
+        
+        .corpus { 
+            background: #0f0f23; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 15px;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+        .corpus-title { color: #00d9ff; margin-bottom: 10px; font-weight: bold; }
+        .sentence { margin: 5px 0; padding: 5px; border-radius: 4px; }
+        .sentence.active { background: #2a4a6e; }
+        .word { padding: 2px 4px; border-radius: 3px; }
+        .word.central { background: #ff6b6b; color: white; }
+        .word.vecina { background: #4ecdc4; color: white; }
+        
+        .stats { margin-top: 15px; }
+        .stat-row { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 8px;
+            background: #0f0f23;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .stat-label { color: #888; }
+        .stat-value { color: #4ecdc4; font-weight: bold; }
+        
+        .legend { margin-top: 15px; }
+        .legend-item { display: flex; align-items: center; margin: 8px 0; font-size: 13px; }
+        .legend-color { width: 20px; height: 20px; border-radius: 50%; margin-right: 10px; }
+        
+        .explanation {
+            background: #0f0f23;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .explanation-title { color: #ff6b6b; margin-bottom: 10px; font-weight: bold; }
+        
+        .distances {
+            background: #0f0f23;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        .dist-title { color: #00d9ff; margin-bottom: 10px; font-weight: bold; }
+        .dist-bar-container { margin: 8px 0; }
+        .dist-bar-label { font-size: 12px; margin-bottom: 3px; }
+        .dist-bar-bg { background: #2a2a4e; height: 20px; border-radius: 4px; overflow: hidden; }
+        .dist-bar { height: 100%; transition: width 0.3s; }
+        .dist-bar.king-crown { background: linear-gradient(90deg, #ff6b6b, #4ecdc4); }
+        .dist-bar.king-the { background: linear-gradient(90deg, #ff6b6b, #888); }
+        .dist-bar.king-queen { background: linear-gradient(90deg, #ff6b6b, #ff69b4); }
+    </style>
+</head>
+<body>
+    <h1>🧠 Word2Vec: Cómo los vectores convergen</h1>
+    
+    <div class="container">
+        <div class="panel left-panel">
+            <canvas id="canvas" width="700" height="550"></canvas>
+            <div class="controls">
+                <button id="btnStep">▶ Un paso</button>
+                <button id="btnAuto">▶▶ Auto (lento)</button>
+                <button id="btnFast">⚡ Auto (rápido)</button>
+                <button id="btnReset">↺ Reiniciar</button>
+            </div>
+        </div>
+        
+        <div class="panel right-panel">
+            <div class="corpus">
+                <div class="corpus-title">📚 Corpus de entrenamiento</div>
+                <div id="sentences"></div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-row">
+                    <span class="stat-label">Iteración:</span>
+                    <span class="stat-value" id="iteration">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Par actual:</span>
+                    <span class="stat-value" id="currentPair">-</span>
+                </div>
+            </div>
+            
+            <div class="distances">
+                <div class="dist-title">📏 Distancias desde "king"</div>
+                <div class="dist-bar-container">
+                    <div class="dist-bar-label">king ↔ crown: <span id="dist-crown">-</span></div>
+                    <div class="dist-bar-bg"><div class="dist-bar king-crown" id="bar-crown"></div></div>
+                </div>
+                <div class="dist-bar-container">
+                    <div class="dist-bar-label">king ↔ the: <span id="dist-the">-</span></div>
+                    <div class="dist-bar-bg"><div class="dist-bar king-the" id="bar-the"></div></div>
+                </div>
+                <div class="dist-bar-container">
+                    <div class="dist-bar-label">king ↔ queen: <span id="dist-queen">-</span></div>
+                    <div class="dist-bar-bg"><div class="dist-bar king-queen" id="bar-queen"></div></div>
+                </div>
+            </div>
+            
+            <div class="legend">
+                <div class="legend-item"><div class="legend-color" style="background:#ff6b6b"></div> king</div>
+                <div class="legend-item"><div class="legend-color" style="background:#4ecdc4"></div> crown</div>
+                <div class="legend-item"><div class="legend-color" style="background:#ff69b4"></div> queen</div>
+                <div class="legend-item"><div class="legend-color" style="background:#888"></div> the (stopword)</div>
+                <div class="legend-item"><div class="legend-color" style="background:#9b59b6"></div> otros</div>
+            </div>
+            
+            <div class="explanation">
+                <div class="explanation-title">💡 ¿Qué está pasando?</div>
+                <div id="explanation">
+                    Cada palabra empieza en una posición aleatoria. Cuando dos palabras aparecen juntas en una oración (dentro de la ventana), sus vectores se acercan un poco. Observá cómo "the" aparece con TODAS las palabras, entonces se queda en el medio. En cambio "king" y "crown" se atraen consistentemente.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Corpus: oraciones con pares que se generan
+        const corpus = [
+            { text: "The king wore the crown", words: ["the", "king", "wore", "the", "crown"] },
+            { text: "The king ruled the kingdom", words: ["the", "king", "ruled", "the", "kingdom"] },
+            { text: "The queen wore the crown", words: ["the", "queen", "wore", "the", "crown"] },
+            { text: "The queen ruled the kingdom", words: ["the", "queen", "ruled", "the", "kingdom"] },
+            { text: "The cat sat on the mat", words: ["the", "cat", "sat", "on", "the", "mat"] },
+            { text: "The dog ran in the park", words: ["the", "dog", "ran", "in", "the", "park"] },
+        ];
+        
+        // Generar pares (central, vecina) con ventana de 2
+        function generatePairs() {
+            const pairs = [];
+            corpus.forEach((sent, sentIdx) => {
+                const words = sent.words;
+                for (let i = 0; i < words.length; i++) {
+                    for (let j = Math.max(0, i-2); j <= Math.min(words.length-1, i+2); j++) {
+                        if (i !== j) {
+                            pairs.push({ central: words[i], vecina: words[j], sentIdx, centralIdx: i, vecinaIdx: j });
+                        }
+                    }
+                }
+            });
+            return pairs;
+        }
+        
+        const allPairs = generatePairs();
+        
+        // Palabras únicas y sus colores
+        const wordColors = {
+            'king': '#ff6b6b',
+            'queen': '#ff69b4',
+            'crown': '#4ecdc4',
+            'the': '#888888',
+            'wore': '#9b59b6',
+            'ruled': '#9b59b6',
+            'kingdom': '#e67e22',
+            'cat': '#9b59b6',
+            'sat': '#9b59b6',
+            'on': '#888888',
+            'mat': '#9b59b6',
+            'dog': '#9b59b6',
+            'ran': '#9b59b6',
+            'in': '#888888',
+            'park': '#9b59b6',
+        };
+        
+        const uniqueWords = [...new Set(corpus.flatMap(s => s.words))];
+        
+        // Estado del modelo
+        let vectors = {};
+        let iteration = 0;
+        let pairIdx = 0;
+        let autoInterval = null;
+        
+        function initVectors() {
+            vectors = {};
+            uniqueWords.forEach(w => {
+                // Posiciones iniciales aleatorias pero con algo de estructura visual
+                vectors[w] = {
+                    x: 100 + Math.random() * 500,
+                    y: 100 + Math.random() * 350
+                };
+            });
+            iteration = 0;
+            pairIdx = 0;
+        }
+        
+        function distance(w1, w2) {
+            const dx = vectors[w1].x - vectors[w2].x;
+            const dy = vectors[w1].y - vectors[w2].y;
+            return Math.sqrt(dx*dx + dy*dy);
+        }
+        
+        function trainStep() {
+            if (pairIdx >= allPairs.length) pairIdx = 0;
+            
+            const pair = allPairs[pairIdx];
+            const central = pair.central;
+            const vecina = pair.vecina;
+            
+            // Learning rate
+            const lr = 0.08;
+            
+            // Mover ambos vectores uno hacia el otro
+            const dx = vectors[vecina].x - vectors[central].x;
+            const dy = vectors[vecina].y - vectors[central].y;
+            
+            vectors[central].x += dx * lr;
+            vectors[central].y += dy * lr;
+            vectors[vecina].x -= dx * lr;
+            vectors[vecina].y -= dy * lr;
+            
+            iteration++;
+            pairIdx++;
+            
+            return pair;
+        }
+        
+        function draw(currentPair = null) {
+            ctx.fillStyle = '#0f0f23';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar conexión si hay par actual
+            if (currentPair) {
+                ctx.beginPath();
+                ctx.moveTo(vectors[currentPair.central].x, vectors[currentPair.central].y);
+                ctx.lineTo(vectors[currentPair.vecina].x, vectors[currentPair.vecina].y);
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+            
+            // Dibujar palabras
+            uniqueWords.forEach(w => {
+                const v = vectors[w];
+                const color = wordColors[w] || '#9b59b6';
+                
+                // Círculo
+                ctx.beginPath();
+                ctx.arc(v.x, v.y, w === 'king' || w === 'crown' || w === 'queen' ? 18 : 12, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+                
+                // Highlight si es parte del par actual
+                if (currentPair && (w === currentPair.central || w === currentPair.vecina)) {
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+                
+                // Label
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(w, v.x, v.y + 30);
+            });
+            
+            // Título
+            ctx.fillStyle = '#00d9ff';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('Espacio de embeddings 2D (simplificado)', 10, 25);
+        }
+        
+        function updateUI(pair) {
+            document.getElementById('iteration').textContent = iteration;
+            document.getElementById('currentPair').textContent = pair ? `(${pair.central}, ${pair.vecina})` : '-';
+            
+            // Distancias
+            const dCrown = distance('king', 'crown').toFixed(1);
+            const dThe = distance('king', 'the').toFixed(1);
+            const dQueen = distance('king', 'queen').toFixed(1);
+            
+            document.getElementById('dist-crown').textContent = dCrown;
+            document.getElementById('dist-the').textContent = dThe;
+            document.getElementById('dist-queen').textContent = dQueen;
+            
+            // Barras (invertidas: menor distancia = barra más larga)
+            const maxDist = 500;
+            document.getElementById('bar-crown').style.width = Math.max(5, (1 - dCrown/maxDist) * 100) + '%';
+            document.getElementById('bar-the').style.width = Math.max(5, (1 - dThe/maxDist) * 100) + '%';
+            document.getElementById('bar-queen').style.width = Math.max(5, (1 - dQueen/maxDist) * 100) + '%';
+            
+            // Resaltar oración actual
+            if (pair) {
+                document.querySelectorAll('.sentence').forEach((el, i) => {
+                    el.classList.toggle('active', i === pair.sentIdx);
+                });
+            }
+            
+            // Explicación dinámica
+            if (iteration > 0 && iteration < 20) {
+                document.getElementById('explanation').innerHTML = `
+                    <strong>Paso ${iteration}:</strong> El par (${pair.central}, ${pair.vecina}) se atrajo. 
+                    Observá cómo "the" aparece en casi todos los pares, así que recibe tirones de todas las direcciones.
+                `;
+            } else if (iteration >= 20 && iteration < 50) {
+                document.getElementById('explanation').innerHTML = `
+                    <strong>Convergiendo...</strong> Notá cómo "king" y "crown" se van acercando porque 
+                    co-ocurren consistentemente. "the" se queda en el medio porque co-ocurre con TODO.
+                `;
+            } else if (iteration >= 50) {
+                document.getElementById('explanation').innerHTML = `
+                    <strong>¡Mirá las distancias!</strong> "king" está mucho más cerca de "crown" que de "the", 
+                    aunque "the" apareció MÁS VECES junto a "king". La diferencia es que "crown" SOLO aparece 
+                    en contextos de realeza, mientras que "the" aparece en todos lados.
+                `;
+            }
+        }
+        
+        function renderCorpus() {
+            const container = document.getElementById('sentences');
+            container.innerHTML = corpus.map((s, i) => 
+                `<div class="sentence" id="sent-${i}">${s.text}</div>`
+            ).join('');
+        }
+        
+        // Event listeners
+        document.getElementById('btnStep').onclick = () => {
+            const pair = trainStep();
+            draw(pair);
+            updateUI(pair);
+        };
+        
+        document.getElementById('btnAuto').onclick = () => {
+            if (autoInterval) { clearInterval(autoInterval); autoInterval = null; return; }
+            autoInterval = setInterval(() => {
+                const pair = trainStep();
+                draw(pair);
+                updateUI(pair);
+            }, 200);
+        };
+        
+        document.getElementById('btnFast').onclick = () => {
+            if (autoInterval) { clearInterval(autoInterval); autoInterval = null; return; }
+            autoInterval = setInterval(() => {
+                for (let i = 0; i < 5; i++) trainStep();
+                const pair = allPairs[(pairIdx - 1 + allPairs.length) % allPairs.length];
+                draw(pair);
+                updateUI(pair);
+            }, 50);
+        };
+        
+        document.getElementById('btnReset').onclick = () => {
+            if (autoInterval) { clearInterval(autoInterval); autoInterval = null; }
+            initVectors();
+            draw();
+            updateUI(null);
+            document.getElementById('explanation').innerHTML = `
+                Cada palabra empieza en una posición aleatoria. Cuando dos palabras aparecen juntas en una oración 
+                (dentro de la ventana), sus vectores se acercan un poco. Observá cómo "the" aparece con TODAS 
+                las palabras, entonces se queda en el medio. En cambio "king" y "crown" se atraen consistentemente.
+            `;
+        };
+        
+        // Init
+        renderCorpus();
+        initVectors();
+        draw();
+        updateUI(null);
+    </script>
+</body>
+</html>
